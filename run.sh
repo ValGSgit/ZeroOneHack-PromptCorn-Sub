@@ -22,6 +22,13 @@ DEMO="$ROOT/demo"
 VENV="$ROOT/.venv"
 PYBIN="$VENV/bin/python"
 
+# Pin BLAS/OpenMP threads: keeps numpy/scikit-learn from spawning a CPU storm that
+# an HPC login node's resource governor would SIGKILL (and it's plenty fast here).
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+
 say(){ printf "\033[1m> %s\033[0m\n" "$*"; }
 die(){ printf "\033[31mERROR: %s\033[0m\n" "$*" >&2; exit 1; }
 

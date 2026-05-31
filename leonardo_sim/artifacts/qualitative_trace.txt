@@ -4,10 +4,10 @@
   step  2 for_whom             dwell=  6s hes=1 back=0 tab=0
   step  3 personal_data        dwell= 12s hes=0 back=1 tab=0
   step  4 tariff_initial_price dwell= 57s hes=2 back=2 tab=1
-        ↳ COACH [reassurance/market_comparison_signal] [rule:repeated_back_navigation | seg=online] Optimal is below ~80% of comparable private-doctor tariffs for this coverage.
+        ↳ COACH [reassurance/market_comparison_signal] [rule:repeated_back_navigation | seg=online | best] Optimal is below ~80% of comparable private-doctor tariffs for this coverage.
   step  6 health_questions     dwell= 25s hes=2 back=0 tab=0
   step  7 final_price          dwell= 11s hes=1 back=0 tab=0 final=€74.95
-        ↳ COACH [personalization/simplify_recommendation] [rule:final_price_jump | seg=service] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
+        ↳ COACH [personalization/simplify_recommendation] [rule:final_price_jump | seg=service | best] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
   step 12 closing              dwell= 24s hes=2 back=0 tab=0 final=€74.95
 
 === Judith — baseline=ABANDONED | coach=CONVERTED ===
@@ -15,21 +15,21 @@
   step  2 for_whom             dwell=  8s hes=1 back=0 tab=0
   step  3 personal_data        dwell= 15s hes=1 back=1 tab=0
   step  4 tariff_initial_price dwell= 21s hes=1 back=1 tab=0
-        ↳ COACH [explanation/term_glossary] [risk=0.55 | seg=hybrid] Quick glossary: 'refractive eye surgery' = laser vision correction; 'medical aids' = e.g. hearing aids, orthotics. Hover any term.
+        ↳ COACH [explanation/term_glossary] [risk=0.55 | seg=hybrid | dropoff | best] Quick glossary: 'refractive eye surgery' = laser vision correction; 'medical aids' = e.g. hearing aids, orthotics. Hover any term.
   step  6 health_questions     dwell= 39s hes=3 back=1 tab=0
   step  7 final_price          dwell= 33s hes=3 back=2 tab=0 final=€40.29
-        ↳ COACH [personalization/simplify_recommendation] [rule:repeated_back_navigation | seg=service] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
+        ↳ COACH [personalization/simplify_recommendation] [rule:repeated_back_navigation | seg=service | best] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
   step 12 closing              dwell= 27s hes=2 back=1 tab=0 final=€40.29
 
 === Peter — baseline=ADVISOR_ROUTED | coach=CONVERTED ===
   step  1 coverage_selection   dwell= 21s hes=3 back=1 tab=0
   step  2 for_whom             dwell= 10s hes=2 back=0 tab=0
   step  3 personal_data        dwell= 37s hes=4 back=3 tab=0
-        ↳ COACH [personalization/simplify_recommendation] [rule:repeated_back_navigation | seg=service] You're almost there — just this step left, and it's quick.
+        ↳ COACH [handoff/advisor_booking_proactive] [rule:repeated_back_navigation | seg=service | dropoff | best] This is a lot to take in. Want a quick callback? An advisor can walk you through it in 5 minutes — no need to figure it out alone.
   step  4 tariff_initial_price dwell= 28s hes=2 back=1 tab=0
-        ↳ COACH [personalization/simplify_recommendation] [risk=0.98 | seg=service] Most people with your needs pick Optimal — solid cover, fully online, no advisor needed. One click to continue.
+        ↳ COACH [personalization/simplify_recommendation] [risk=0.99 | seg=service | best] Most people with your needs pick Optimal — solid cover, fully online, no advisor needed. One click to continue.
   step  6 health_questions     dwell= 32s hes=3 back=2 tab=0
-        ↳ COACH [personalization/simplify_recommendation] [rule:repeated_back_navigation | seg=service] You're almost there — just this step left, and it's quick.
+        ↳ COACH [personalization/simplify_recommendation] [rule:repeated_back_navigation | seg=service | best] You're almost there — just this step left, and it's quick.
   step  7 final_price          dwell= 24s hes=2 back=1 tab=0 final=€50.36
-        ↳ COACH [personalization/simplify_recommendation] [rule:final_price_jump | seg=service] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
+        ↳ COACH [personalization/simplify_recommendation] [rule:final_price_jump | seg=service | best] Nothing more to decide — your cover is set. Tap continue and you're done; we'll email the confirmation.
   step 12 closing              dwell= 19s hes=0 back=1 tab=0 final=€50.36

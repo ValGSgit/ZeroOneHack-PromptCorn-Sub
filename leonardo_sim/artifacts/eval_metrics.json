@@ -5,9 +5,9 @@
   },
   "dimension1_conversion": {
     "baseline": 0.048,
-    "coach": 0.17300000000000001,
-    "uplift_pts": 0.125,
-    "multiplier": 3.604166666666667,
+    "coach": 0.17733333333333334,
+    "uplift_pts": 0.12933333333333336,
+    "multiplier": 3.6944444444444446,
     "dropoff_baseline": {
       "1": 0.10166666666666667,
       "2": 0.07569573283858999,
@@ -18,23 +18,23 @@
       "12": 0.02040816326530612
     },
     "dropoff_coach": {
-      "1": 0.09966666666666667,
-      "2": 0.07700851536467974,
-      "3": 0.042519053349378264,
-      "4": 0.4641809803100126,
-      "6": 0.03205629397967162,
-      "7": 0.5508885298869144,
-      "12": 0.06654676258992807
+      "1": 0.10033333333333333,
+      "2": 0.0763245646535754,
+      "3": 0.044123545928600086,
+      "4": 0.4637012169534201,
+      "6": 0.032081377151799685,
+      "7": 0.540016168148747,
+      "12": 0.06502636203866433
     }
   },
   "dimension2_per_persona": {
     "Franz": {
       "baseline": 0.06333333333333334,
-      "coach": 0.21333333333333335
+      "coach": 0.22
     },
     "Judith": {
       "baseline": 0.03,
-      "coach": 0.14333333333333334
+      "coach": 0.14666666666666667
     },
     "Peter": {
       "baseline": 0.03666666666666667,
@@ -42,17 +42,18 @@
     }
   },
   "dimension3_intervention_quality": {
-    "fired": 1051,
-    "precision": 0.7212178877259753,
-    "recall": 0.8633257403189066,
-    "annoyance_rate": 0.2787821122740247,
+    "fired": 1062,
+    "precision": 0.7175141242937854,
+    "recall": 0.8698630136986302,
+    "annoyance_rate": 0.2824858757062147,
     "mix": {
-      "market_comparison_signal": 121,
-      "term_glossary": 190,
-      "simplify_recommendation": 466,
+      "market_comparison_signal": 124,
+      "term_glossary": 192,
+      "simplify_recommendation": 345,
       "suggest_online_tariff": 129,
       "value_justification": 76,
-      "reassurance_transparency": 69
+      "reassurance_transparency": 68,
+      "advisor_booking_proactive": 128
     }
   }
 }
