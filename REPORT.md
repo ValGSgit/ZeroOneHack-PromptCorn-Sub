@@ -1,4 +1,4 @@
-# REPORT — UNIQA Conversion Coach
+# PromptCorn — UNIQA Conversion Coach
 
 Honest evaluation, assumptions, and disclosures for the Insurance / UNIQA track.
 All numbers below are produced by `leonardo_sim/evaluate.py` and written to
@@ -7,6 +7,13 @@ All numbers below are produced by `leonardo_sim/evaluate.py` and written to
 
 ---
 
+Team
+- Valentino Garcia Susini
+- Erik Seferi
+- Dinmukhamed Zhakhan
+- Benjamin Szilas
+
+---
 ## 1. Results — the three judged dimensions
 
 Held-out cohort: **300 journeys per persona, seed 99** (disjoint from the
