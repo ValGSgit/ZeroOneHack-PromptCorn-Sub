@@ -2,13 +2,15 @@
 name = "uniqa-coach"
 version = "1.0.0"
 description = "UNIQA Conversion Coach – AI assistant for health insurance"
-authors = ["Your Name <you@example.com>"]
+authors = ["PromptCorn"]
 license = "MIT"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
-# Core deps — enough to run the app, the real leonardo_sim engine bridge, and
-# the full evaluation showcase (no GPU / no torch required).
+# Core deps — enough to run the app, the real leonardo_sim engine bridge, and the
+# full evaluation showcase (no GPU required). The simplest, most reliable path is
+# the repo launcher (`../run.sh app`), which uses a pip venv and avoids conda
+# solves entirely. This pixi env is provided as an alternative.
 [dependencies]
 python = ">=3.10,<3.13"
 fastapi = ">=0.115"
@@ -18,14 +20,11 @@ numpy = ">=1.26"
 scikit-learn = ">=1.3"   # loads the trained coach_model.pkl (HistGradientBoosting)
 joblib = ">=1.3"
 
-# The Phi-3 chat panel is optional. Install this feature only if you want the
-# conversational coach (heavy download): `pixi run -e slm start`.
-[feature.slm.dependencies]
-transformers = ">=4.46"
-torch = ">=2.4"
-
-[environments]
-slm = ["slm"]
+# NOTE: the optional Phi-3 chat needs torch, which on conda-forge is the package
+# `pytorch` (not `torch`) and is heavy/CUDA-sensitive. To keep setup bullet-proof
+# we install it via pip only when wanted, instead of as a conda dependency:
+#     pip install "torch>=2.4" "transformers>=4.46"
+# Without it the coach replies are instant and doc-grounded.
 
 [tasks]
 start = "python app.py"
