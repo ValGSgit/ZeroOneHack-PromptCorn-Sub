@@ -1,0 +1,19 @@
+# UNIQA Conversion Coach — demo app (pip route).
+#
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#   python app.py            # http://localhost:9696
+#
+# Core — app + the real leonardo_sim engine bridge + the full evaluation
+# showcase. No GPU / torch required (the coach loads the trained classifier and
+# replies are doc-grounded).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.0
+numpy>=1.26
+scikit-learn>=1.3        # loads artifacts/coach_model.pkl (HistGradientBoosting)
+joblib>=1.3
+
+# Optional — the Phi-3 conversational coach panel. Heavy; only needed if you want
+# natural-language chat instead of the (instant) doc-grounded replies.
+#   pip install "torch>=2.4" "transformers>=4.46"

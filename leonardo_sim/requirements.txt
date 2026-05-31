@@ -1,0 +1,9 @@
+# Install on a Leonardo LOGIN node (has internet), into a shared venv under $PUBLIC.
+# vLLM pulls in a matching torch build; install it first, then the rest.
+vllm==0.5.4
+transformers>=4.43,<4.45
+huggingface_hub>=0.24
+pandas>=2.0
+# xgboost is only needed by the teammate who trains the coach (Step 4), not the sim:
+# xgboost>=2.0
+# scikit-learn>=1.3

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Local environments (provisioned per-machine — never commit)
+.venv/
+.venv_demo/
+.venv_coach/
+.pixi/
+demo/.venv/
+demo/.venv_demo/
+demo/.pixi/
+leonardo_sim/.pixi/
+leonardo_sim/.venv*/
+
+# Logs / scratch
+*.log
+logs/
+.DS_Store

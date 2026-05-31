@@ -1,0 +1,32 @@
+# Pixi environment for the UNIQA persona simulator (Leonardo / A100).
+# Pixi (https://pixi.sh) gives a locked, reproducible env from conda-forge + PyPI —
+# no manual venv, no module juggling, no version drift across teammates.
+#
+# The version trio below is a MATCHED SET validated on Leonardo (driver CUDA 12.2):
+#   torch 2.4.0  -> PyPI default linux wheel is cu121, which the 12.2 driver supports
+#   vllm 0.6.3.post1 -> pins torch 2.4.0
+#   transformers 4.46.3 -> last line before transformers needs torch>=2.5 APIs
+# Do not bump any one of them in isolation.
+
+[project]
+name = "uniqa-sim"
+version = "0.1.0"
+description = "UNIQA persona journey simulator — Conversion Coach training data"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+
+[pypi-dependencies]
+vllm = "==0.6.3.post1"
+torch = "==2.4.0"
+transformers = "==4.46.3"
+huggingface_hub = ">=0.24,<1.0"
+pandas = ">=2.0"
+
+[tasks]
+# Pre-download the model into $HF_HOME (run on a LOGIN node; compute nodes are offline).
+download-model = "python download_model.py --model HuggingFaceH4/zephyr-7b-beta"
+# Convenience: merge all data_*.csv into the master training set.
+merge = "python merge_datasets.py --input-dir ${PUBLIC}/hackathon_data --output ${PUBLIC}/hackathon_data/master_training_dataset.csv"

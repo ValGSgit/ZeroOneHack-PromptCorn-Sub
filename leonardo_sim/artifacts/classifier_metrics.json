@@ -1,0 +1,21 @@
+{
+  "n_rows": 109865,
+  "positive_rate": 0.18902289173076048,
+  "roc_auc": 0.9750827527111555,
+  "pr_auc": 0.9272670699393671,
+  "brier": 0.04281755379099567,
+  "feature_importance": {
+    "step": 0.017934697082103462,
+    "time_on_step_s": 0.3250779565255363,
+    "cumulative_time_s": 0.061045954321506585,
+    "n_hesitation_events": 0.0265245947317726,
+    "n_back_clicks": 0.005444474275368122,
+    "opened_competitor_tab": 0.000563608824073733,
+    "advisory_click": 0.0,
+    "provisional_price": 0.0006874568748607007,
+    "price_delta_pct": 0.0018138698446544949,
+    "cum_hesitation_events": 0.0033916922391179355,
+    "cum_back_clicks": 0.0010604779821845323,
+    "is_price_step": 0.07584032090291737
+  }
+}
