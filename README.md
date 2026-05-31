@@ -227,14 +227,25 @@ stayed). It fires on real abandonment moments, not randomly.
 
 ---
 
-## Run the demo (no GPU needed)
+## Run it — one launcher, zero setup pain
+
+`run.sh` at the repo root builds a local pip venv (no conda/pixi solve, so the
+"No candidates for torch" / NFS-cache errors can't happen) and runs anything:
 
 ```bash
-cd demo
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python app.py                     # http://localhost:9696
+./run.sh app                              # web demo            → http://localhost:9696
+./run.sh demo --compare judith --seed 17  # terminal side-by-side (advisor_routed → CONVERTED)
+./run.sh demo --compare franz  --seed 10  # Franz: abandoned → CONVERTED
+./run.sh demo --auto  --seed 42           # all three personas in the terminal
+./run.sh eval --no-plots                  # the 3-dimension evaluation
+./run.sh calibrate                        # verify baseline 5.6% / 66% / 78%
 ```
+
+On an HPC login node it auto-runs `module load python`; elsewhere it uses any
+Python ≥3.10 (override with `PYTHON=/path/to/python3`). It pins BLAS/OpenMP
+threads so a login-node resource governor won't kill the run.
+
+> Prefer to do it by hand? `cd demo && pip install -r requirements.txt && python app.py`.
 
 The demo auto-finds `../leonardo_sim` (override with `LEONARDO_SIM=/path`). Two tabs:
 
@@ -252,13 +263,14 @@ back to instant doc-grounded replies; everything else is unaffected).
 ## Reproduce the analysis (CPU, ~1 min)
 
 ```bash
-cd leonardo_sim
-./run.sh pipeline                    # baseline → train → evaluate → compare
-./run.sh evaluate --no-plots         # just the 3-dimension metrics
-python -m coach.funnel --calibrate   # verify baseline reproduces 5.6% / 66% / 78%
+./run.sh calibrate            # verify the funnel reproduces 5.6% / 66% / 78%
+./run.sh eval --no-plots      # the three before/after dimensions
+./run.sh train                # retrain the coach classifier
 ```
 
-Regenerate the LLM persona data on Leonardo (GPU): `bash run_all.sh` — see
+For the full retrain-from-data pipeline use the implementation's own runner
+(`cd leonardo_sim && ./run.sh pipeline`). Regenerate the LLM persona data on
+Leonardo (GPU) with `bash leonardo_sim/run_all.sh` — see
 `leonardo_sim/README_LEONARDO.md`.
 
 ---
