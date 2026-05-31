@@ -278,7 +278,12 @@ def doc_reply(intent: Optional[str], step: int, tariff: str, belief: Dict, top_s
         12: "Step 12: final checkout. Nothing is charged until you confirm.",
     }
 
-    if intent in ("step_explain", None, "greeting"):
+    if intent == "greeting":
+        return ("Hi! I'm your conversion coach — I help you finish online without the back-and-forth. "
+                f"You're on the {STEP_NAMES.get(step, 'current')} step. Ask me about the options, the price, "
+                "or what to pick.")
+
+    if intent in ("step_explain", None):
         return step_info.get(step, f"You're on step {step}. Ask me anything.")
 
     if intent == "unfamiliar":
@@ -328,6 +333,64 @@ def doc_reply(intent: Optional[str], step: int, tariff: str, belief: Dict, top_s
                 f"You're looking at {tariff} (≈€{per_day:.2f}/day). Want me to break down what's covered?")
 
     return step_info.get(step, "Ask me about the options, the price, or anything that's unclear.")
+
+# ----------------------------------------------------------------------
+# Coach DECISION layer — map a detected signal to the real intervention the
+# coach would fire (same taxonomy as leonardo_sim), respecting each segment's
+# "must NOT". This is what makes the live panel *the coach*, with visible
+# reasoning, rather than a generic chatbot. Phi-3 (if present) only rephrases.
+# ----------------------------------------------------------------------
+_SIGNAL_TO_INTERVENTION = {
+    "price_high":      ("suggest_cheaper_tariff",     "reassurance"),
+    "price_jump":      ("value_justification",        "reassurance"),
+    "price_info":      ("value_justification",        "explanation"),
+    "comparing":       ("market_comparison_signal",   "reassurance"),
+    "advisory_tariff": ("suggest_online_tariff",      "alternative_offering"),
+    "explain_options": ("term_glossary",              "explanation"),
+    "unfamiliar":      ("term_glossary",              "explanation"),
+    "overwhelmed":     ("simplify_recommendation",    "personalization"),
+    "recommend":       ("simplify_recommendation",    "personalization"),
+    "wants_human":     ("advisor_booking_proactive",  "handoff"),
+    "trust":           ("reassurance_transparency",   "reassurance"),
+    "leaving":         ("save_progress_resume_later", "retention"),
+    "frustration":     ("reassurance_transparency",   "reassurance"),
+    "step_explain":    ("term_glossary",              "explanation"),
+    "options":         ("term_glossary",              "explanation"),
+    "greeting":        ("welcome",                    "informational"),
+    "ready":           ("encourage_continue",         "informational"),
+}
+
+def coach_decision(intent: Optional[str], top_seg: str) -> Dict[str, str]:
+    """The coach's decision trace for one turn: detected signal, inferred
+    segment, and the intervention it picks (respecting per-segment 'must NOT')."""
+    name, cat = _SIGNAL_TO_INTERVENTION.get(intent or "", ("clarify_intent", "informational"))
+    # Never push an advisor on a segment that dislikes it (Franz). Fall back to a
+    # self-service nudge — exactly what the real coach does.
+    if name == "advisor_booking_proactive" and not engine.ADVISOR_FRIENDLY.get(top_seg, True):
+        name, cat = "save_progress_resume_later", "retention"
+    return {
+        "signal": intent or "open_message",
+        "segment": top_seg,
+        "intervention": name,
+        "category": cat,
+        # is this one of the segment's *documented* best interventions?
+        "documented_best": name in engine.BEST_INTERVENTIONS.get(top_seg, []),
+    }
+
+def vary_reply(state, reply: str) -> str:
+    """Avoid the coach repeating itself verbatim turn after turn."""
+    recent = getattr(state, "recent_replies", [])
+    if reply in recent:
+        nudges = [
+            " Anything specific you'd like me to clarify?",
+            " Want me to break that down further?",
+            " Happy to go deeper on any part.",
+            " Let me know what would help most.",
+        ]
+        reply = reply.rstrip() + nudges[len(recent) % len(nudges)]
+    recent.append(reply)
+    state.recent_replies = recent[-5:]
+    return reply
 
 # ----------------------------------------------------------------------
 # SLM (Phi‑3) loader & generation (non‑blocking)
@@ -425,7 +488,13 @@ async def generate_slm_reply(messages: List[Dict[str, str]]) -> str:
                 outputs = _slm_model.generate(
                     **inputs,
                     max_new_tokens=Config.SLM_MAX_NEW_TOKENS,
-                    do_sample=False,
+                    # Sample (not greedy) + repetition penalty so the coach phrases
+                    # each reply differently instead of repeating canned sentences.
+                    do_sample=True,
+                    temperature=0.7,
+                    top_p=0.9,
+                    repetition_penalty=1.3,
+                    no_repeat_ngram_size=3,
                     pad_token_id=(_slm_tokenizer.pad_token_id or _slm_tokenizer.eos_token_id),
                 )
             raw = _slm_tokenizer.decode(
@@ -453,6 +522,7 @@ class SessionState:
         self.history: List[Dict[str, str]] = []
         self.back_clicks = 0
         self.competitor_tab = False
+        self.recent_replies: List[str] = []
         self.created_at = datetime.utcnow()
 
 _sessions: Dict[str, SessionState] = {}
@@ -492,6 +562,8 @@ class ChatResponse(BaseModel):
     belief: Dict[str, float]
     top_seg: str
     risk: float
+    reasoning: Optional[Dict[str, object]] = None
+    source: str = "coach"   # "coach" (rule-based) or "coach+phi3" (phrased by SLM)
 
 class SignalResponse(BaseModel):
     belief: Dict[str, float]
@@ -499,6 +571,8 @@ class SignalResponse(BaseModel):
     risk: float
     coach_message: str
     intent: Optional[str]
+    reasoning: Optional[Dict[str, object]] = None
+    source: str = "coach"
 
 class SimulateRequest(BaseModel):
     persona: str = "Franz"
@@ -569,7 +643,10 @@ async def handle_signal(request: Request, data: SignalRequest):
     risk = score_risk(state.step, state.back_clicks, state.competitor_tab, intent)
 
     coach_msg = ""
+    decision = None
+    source = "coach"
     if risk > 0.35:
+        decision = coach_decision(intent, top_seg)
         coach_msg = doc_reply(intent, state.step, state.tariff, state.belief, top_seg)
         if _slm_model:
             sys_p = build_system_prompt(state.step, state.tariff, state.belief, top_seg)
@@ -580,6 +657,8 @@ async def handle_signal(request: Request, data: SignalRequest):
             ])
             if slm_reply:
                 coach_msg = slm_reply
+                source = "coach+phi3"
+        coach_msg = vary_reply(state, coach_msg)
 
     response = SignalResponse(
         belief=state.belief,
@@ -587,6 +666,8 @@ async def handle_signal(request: Request, data: SignalRequest):
         risk=risk,
         coach_message=coach_msg,
         intent=intent,
+        reasoning=decision,
+        source=source,
     )
     resp = JSONResponse(content=response.model_dump())
     if not request.cookies.get("coach_session"):
@@ -608,7 +689,11 @@ async def chat(request: Request, data: ChatRequest):
     top_seg = top_segment(belief)
     risk = score_risk(state.step, state.back_clicks, state.competitor_tab, intent)
 
+    # The COACH decides what to do (detection signal -> segment -> intervention);
+    # doc_reply renders it. Phi-3, if present, only rephrases — it never decides.
+    decision = coach_decision(intent, top_seg)
     reply = doc_reply(intent, state.step, state.tariff, belief, top_seg, text=data.message)
+    source = "coach"
 
     if _slm_model:
         state.history.append({"role": "user", "content": data.message})
@@ -617,18 +702,22 @@ async def chat(request: Request, data: ChatRequest):
         slm_reply = await generate_slm_reply(messages)
         if slm_reply:
             reply = slm_reply
+            source = "coach+phi3"
             state.history.append({"role": "assistant", "content": reply})
         if len(state.history) > Config.MAX_HISTORY * 2:
             state.history = state.history[-Config.MAX_HISTORY * 2:]
     else:
         asyncio.create_task(ensure_slm_loaded())
 
+    reply = vary_reply(state, reply)
     response = ChatResponse(
         reply=reply,
         intent=intent,
         belief=belief,
         top_seg=top_seg,
         risk=risk,
+        reasoning=decision,
+        source=source,
     )
     resp = JSONResponse(content=response.model_dump())
     if not request.cookies.get("coach_session"):
@@ -980,14 +1069,124 @@ label { font-weight: 500; color: #1e2a44; margin-top: 16px; display: block; }
 .mcard .v{font-size:1.5rem;font-weight:800;color:#002b5c}
 .mcard .k{font-size:.7rem;color:#5b6e8c;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 @media (max-width:800px){.sbs{grid-template-columns:1fr}}
+
+/* ====================================================================== */
+/*  Cohesive redesign layer (v2) — design tokens + restyle                */
+/* ====================================================================== */
+:root{
+  --navy:#0a2540; --navy2:#002b5c; --cyan:#00b4d8; --cyan-d:#0093b4;
+  --ink:#0f2138; --muted:#64748b; --line:#e6ebf2; --bg:#eef2f8;
+  --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626;
+  --r-lg:22px; --r-md:16px; --r-sm:11px;
+  --shadow:0 10px 30px -12px rgba(13,38,76,.22);
+  --shadow-lg:0 24px 60px -20px rgba(13,38,76,.30);
+}
+body{
+  background:radial-gradient(1200px 600px at 10% -10%, #eaf6fb 0%, transparent 60%),
+             radial-gradient(1000px 500px at 110% 0%, #eef1fb 0%, transparent 55%),
+             linear-gradient(180deg,#f3f6fb 0%, #e9eef6 100%);
+  display:block; padding:18px 18px 8px; color:var(--ink);
+}
+/* --- app bar --- */
+.appbar{max-width:1400px;margin:0 auto 16px;background:#fff;border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--shadow);padding:14px 20px;display:flex;
+  align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.brand-mark{width:42px;height:42px;border-radius:13px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--navy2),var(--cyan));color:#fff;font-weight:800;font-size:1.3rem;
+  box-shadow:0 6px 16px -6px rgba(0,148,180,.6)}
+.brand-title{font-weight:800;font-size:1.12rem;color:var(--navy);letter-spacing:-.2px;line-height:1.1}
+.brand-sub{font-size:.74rem;color:var(--muted);margin-top:2px}
+.tabs{display:flex;gap:8px;margin-left:8px}
+.tab-btn{background:#f1f5fb;border:1.5px solid transparent;border-radius:40px;padding:9px 18px;
+  font-weight:600;font-size:.88rem;cursor:pointer;color:var(--navy);transition:.18s}
+.tab-btn:hover{background:#e7eefb}
+.tab-btn.active{background:var(--navy2);color:#fff;box-shadow:0 8px 18px -8px rgba(0,43,92,.6)}
+.status-pill{margin-left:auto;font-size:.72rem;color:var(--muted);display:flex;gap:9px;align-items:center;
+  background:#f7f9fc;border:1px solid var(--line);border-radius:40px;padding:7px 14px}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px rgba(245,158,11,.15)}
+.dot.off{background:#94a3b8}
+/* --- shells --- */
+.container{max-width:1400px;margin:0 auto 14px;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  border:1px solid var(--line)}
+.calculator{border-right:1px solid var(--line)}
+.calc-header{background:linear-gradient(120deg,var(--navy) 0%,var(--navy2) 60%,#063e7e 100%)}
+.calc-header h1{font-weight:800;letter-spacing:-.4px}
+.progress-fill{background:linear-gradient(90deg,var(--cyan),#3ddc97)}
+.step-title{letter-spacing:-.5px}
+.option-card{border-radius:var(--r-md);border:2px solid var(--line);transition:.18s}
+.option-card:hover{border-color:var(--cyan);background:#f3fbfe;box-shadow:0 10px 24px -16px rgba(0,148,180,.7)}
+.option-card.selected{border-color:var(--navy2);background:#eef4ff}
+.badge.online{background:#dcfce7;color:#15803d}
+.badge.advisory{background:#fef3c7;color:#92400e}
+.btn-primary{background:linear-gradient(120deg,var(--navy2),#0e4f93);border-radius:40px;
+  box-shadow:0 12px 24px -12px rgba(0,43,92,.7);letter-spacing:.2px}
+.btn-primary:hover{filter:brightness(1.08)}
+.sim-btn{border-radius:40px;transition:.15s}
+.sim-btn:hover{border-color:var(--cyan);color:var(--cyan-d);background:#f3fbfe}
+/* --- chat / coach --- */
+.chat{background:linear-gradient(180deg,#fbfdff,#f5f8fd)}
+.chat-header{background:linear-gradient(120deg,var(--cyan),var(--cyan-d));align-items:flex-start}
+.chat-header h2{font-weight:700;font-size:1.12rem}
+.chat-sub{font-size:.68rem;color:rgba(255,255,255,.9);margin-top:3px;font-weight:500}
+.model-badge{background:rgba(255,255,255,.22);font-weight:700;align-self:center}
+.risk-strip{gap:10px}
+.risk-lab{font-weight:600;color:var(--muted);white-space:nowrap}
+.risk-bar{height:8px;border-radius:5px;background:#e8edf4}
+.risk-fill{height:8px;border-radius:5px;transition:width .4s ease,background .4s}
+.risk-pct{font-weight:800;color:var(--navy);min-width:34px;text-align:right}
+.profile-bar{gap:16px;align-items:center}
+.seg-pill{font-weight:600;color:#41506a}
+.seg-track{width:64px;height:6px;border-radius:4px}
+.seg-fill{height:6px;border-radius:4px;transition:width .4s}
+.messages{gap:14px;padding:18px 18px 8px}
+.msg{max-width:88%;border-radius:16px;font-size:.9rem;line-height:1.45;box-shadow:0 2px 6px -3px rgba(13,38,76,.15)}
+.msg.user{background:linear-gradient(120deg,var(--navy2),#0e4f93);border-bottom-right-radius:5px}
+.msg.coach{background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
+.msg.system{background:#fff7d6;color:#7c5e10;border:1px solid #fde68a;border-radius:14px;font-weight:600}
+/* visible coach reasoning chip */
+.reason-chip{margin-top:9px;padding:7px 9px;background:#f3f8ff;border:1px solid #e2ecfb;border-radius:10px;
+  font-size:.68rem;color:#43597c;display:flex;flex-wrap:wrap;align-items:center;gap:5px;line-height:1.5}
+.reason-chip.muted{color:#8aa;background:#f8fafc;border-color:#eef2f7}
+.reason-chip .rlab{text-transform:uppercase;letter-spacing:.4px;font-size:.6rem;color:#90a0b8;font-weight:700}
+.reason-chip .rval{font-weight:600;color:#33465f}
+.reason-chip .rarr{color:#b6c2d4;font-weight:700}
+.reason-chip .rint{color:#0e7490;background:#e0f5fb;padding:1px 7px;border-radius:20px;font-size:.7rem}
+.reason-chip .rbest{color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;font-weight:700}
+.reason-chip .rphi{color:#7c3aed;background:#f3e8ff;padding:1px 7px;border-radius:20px}
+.input-row input{border:1.5px solid var(--line)}
+.input-row input:focus{border-color:var(--cyan)}
+.input-row button{background:linear-gradient(120deg,var(--cyan),var(--cyan-d));font-weight:700}
+/* --- evidence cohesion --- */
+.evidence{border:1px solid var(--line);box-shadow:var(--shadow-lg);border-radius:var(--r-lg)}
+.col{border-radius:var(--r-md)}
+.mcard{border-radius:14px}
+.mcard .v{color:var(--navy)}
+/* --- footer --- */
+.appfoot{max-width:1400px;margin:6px auto 10px;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px;
+  align-items:center;justify-content:center;font-size:.78rem;color:var(--muted)}
+.appfoot b{color:var(--navy)}
+.appfoot .dotsep{color:#cbd5e1}
+@media (max-width:820px){.appbar{gap:10px}.brand-sub{display:none}.status-pill{margin-left:0}}
 </style>
 </head>
 <body>
-<div class="topnav">
-    <button class="tab-btn active" id="tabLive" onclick="showView('live')">▶ Live coach</button>
-    <button class="tab-btn" id="tabEvidence" onclick="showView('evidence')">📊 Evidence · real engine + evaluation</button>
+<header class="appbar">
+    <div class="brand">
+        <div class="brand-mark">U</div>
+        <div class="brand-text">
+            <div class="brand-title">UNIQA Conversion Coach</div>
+            <div class="brand-sub">detects abandonment → fires a per-segment intervention → more online conversions</div>
+        </div>
+    </div>
+    <nav class="tabs">
+        <button class="tab-btn active" id="tabLive" onclick="showView('live')">▶ Live coach</button>
+        <button class="tab-btn" id="tabEvidence" onclick="showView('evidence')">📊 Evidence &amp; results</button>
+    </nav>
     <div class="status-pill" id="statusPill"><span class="dot off"></span><span>checking engine…</span></div>
-</div>
+</header>
 <div id="liveView">
 <div class="container">
     <div class="calculator">
@@ -1008,12 +1207,16 @@ label { font-weight: 500; color: #1e2a44; margin-top: 16px; display: block; }
     </div>
     <div class="chat">
         <div class="chat-header">
-            <h2>💬 AI Conversion Coach</h2>
-            <div class="model-badge">Phi‑3 · MIT</div>
+            <div>
+                <h2>💬 AI Conversion Coach</h2>
+                <div class="chat-sub">rule-based detection + decision · Phi-3 only phrases it</div>
+            </div>
+            <div class="model-badge" id="modelBadge">coach engine</div>
         </div>
         <div class="risk-strip">
-            Abandonment risk: <div class="risk-bar"><div class="risk-fill" id="riskFill"></div></div>
-            <span id="riskPct">0%</span>
+            <span class="risk-lab">Abandonment risk</span>
+            <div class="risk-bar"><div class="risk-fill" id="riskFill"></div></div>
+            <span id="riskPct" class="risk-pct">5%</span>
         </div>
         <div class="profile-bar" id="profileBar">
             <!-- dynamic personas -->
@@ -1055,6 +1258,15 @@ label { font-weight: 500; color: #1e2a44; margin-top: 16px; display: block; }
     </div>
   </div>
 </div>
+<footer class="appfoot">
+    <span><b>~5.6%</b> baseline → <b id="footConv">~17%</b> with coach</span>
+    <span class="dotsep">•</span>
+    <span>traffic mix <b>50/30/20</b> (Franz/Judith/Peter)</span>
+    <span class="dotsep">•</span>
+    <span>identical seeds · not an LLM wrapper</span>
+    <span class="dotsep">•</span>
+    <span>MIT · Zero One Hack_01</span>
+</footer>
 <script>
 // Real engine numbers injected server-side (engine.ui_config) — no hard-coding.
 const CFG = __UNIQA_CFG__;
@@ -1126,26 +1338,40 @@ function updateUI(d) {
         document.getElementById('riskFill').style.background = r>65?'#ef4444':r>35?'#f97316':'#22c55e';
         document.getElementById('riskPct').innerText = r+'%';
     }
-    if (d.coach_message) addMessage('coach', d.coach_message, d.intent || '');
+    if (d.coach_message) {
+        if (d.reasoning) d.reasoning.source = d.source;
+        addMessage('coach', d.coach_message, d.reasoning || d.intent || '');
+    }
 }
 function triggerCoach(intent, reason) {
     fetch('/signal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'trigger', step:STEPS[state.stepIdx].id, intent, tariff:state.tariff})}).then(r=>r.json()).then(updateUI);
 }
-function addMessage(role, text, tag='') {
+function addMessage(role, text, reasoning='') {
     const msgs = document.getElementById('messages');
     const div = document.createElement('div');
     div.className = 'msg ' + role;
-    div.textContent = text;
-    if (tag && role==='coach') {
-        const t = document.createElement('div');
-        t.className = 'intent-tag';
-        t.style.fontSize = '0.7rem';
-        t.style.color = '#8a99b0';
-        t.textContent = tag;
-        div.appendChild(t);
+    const body = document.createElement('div');
+    body.textContent = text;
+    div.appendChild(body);
+    if (reasoning && role === 'coach') {
+        if (typeof reasoning === 'object') div.appendChild(renderReasoning(reasoning));
+        else { const t = document.createElement('div'); t.className = 'reason-chip muted'; t.textContent = reasoning; div.appendChild(t); }
     }
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
+}
+// Visible coach reasoning: detected signal → inferred segment → chosen intervention.
+function renderReasoning(r) {
+    const chip = document.createElement('div');
+    chip.className = 'reason-chip';
+    const best = r.documented_best ? `<span class="rbest">★ best for ${r.segment}</span>` : '';
+    const phi = r.source === 'coach+phi3' ? `<span class="rphi">Phi-3 phrasing</span>` : '';
+    chip.innerHTML =
+        `<span class="rlab">signal</span><span class="rval">${r.signal}</span>` +
+        `<span class="rarr">→</span><span class="rlab">segment</span><span class="rval">${r.segment}</span>` +
+        `<span class="rarr">→</span><span class="rlab">intervention</span><b class="rint">${r.intervention}</b>` +
+        best + phi;
+    return chip;
 }
 async function sendMessage() {
     const inp = document.getElementById('chatInput');
@@ -1157,7 +1383,8 @@ async function sendMessage() {
     const resp = await fetch('/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message: msg, step: STEPS[state.stepIdx].id, tariff: state.tariff, belief: state.belief})});
     const d = await resp.json();
     document.getElementById('typingIndicator').style.display = 'none';
-    addMessage('coach', d.reply, d.intent || '');
+    if (d.reasoning) d.reasoning.source = d.source;
+    addMessage('coach', d.reply, d.reasoning || d.intent || '');
     updateUI(d);
 }
 document.getElementById('continueBtn').onclick = nextStep;
@@ -1165,6 +1392,7 @@ document.getElementById('backSimBtn').onclick = simBack;
 document.getElementById('tabSimBtn').onclick = simTab;
 document.getElementById('sendBtn').onclick = sendMessage;
 renderStep();
+addMessage('coach', "Hi! I'm your conversion coach. Pick a coverage type to begin, or ask me anything — try “what’s the difference between hospital and doctor visits?” or “which plan should I pick?”", {signal:'open_message', segment:'—', intervention:'welcome', documented_best:false});
 
 // ====================================================================
 // Evidence showcase — driven by the real leonardo_sim engine
@@ -1187,7 +1415,10 @@ function renderStatus(s){
     const slmDot = slm.loaded ? 'ok' : (slm.torch_available ? 'warn' : 'off');
     document.getElementById('statusPill').innerHTML =
         `<span class="dot ${engDot}"></span><span>engine ${s.available ? 'live' : 'standalone'}</span>` +
-        `<span class="dot ${slmDot}"></span><span>SLM ${slm.loaded ? 'on' : (slm.torch_available ? 'warming' : 'off · doc replies')}</span>`;
+        `<span class="dot ${slmDot}"></span><span>Phi-3 ${slm.loaded ? 'on' : (slm.torch_available ? 'warming' : 'off')}</span>`;
+    const mb = document.getElementById('modelBadge');
+    if (mb) mb.textContent = slm.loaded ? 'coach + Phi-3' : 'coach engine';
+    const fc = document.getElementById('footConv');
     const evs = document.getElementById('evStatus');
     if (evs){
         evs.innerHTML = s.available
