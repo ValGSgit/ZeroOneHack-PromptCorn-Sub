@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UNIQA Conversion Coach — PromptCorn · Zero One Hack_01</title>
+<meta name="description" content="An auditable AI Conversion Coach that detects when a UNIQA health-insurance visitor is about to abandon and fires a per-segment intervention — lifting online conversion ×3.6 on identical held-out journeys." />
+<meta name="author" content="PromptCorn — Valentino Garcia Susini, Erik Seferi, Dinmukhamed Zhakhan, Benjamin Szilas" />
+
+<!-- Open Graph -->
+<meta property="og:title" content="UNIQA Conversion Coach — PromptCorn" />
+<meta property="og:description" content="Online conversion ~4.8% → ~17.3% (×3.6) on identical held-out journeys. Not an LLM wrapper — a trained classifier + transparent per-segment rules, every fire logged." />
+<meta property="og:type" content="website" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="logo">🎯</span>
+      <span>Conversion Coach<br /><small>PromptCorn · UNIQA track</small></span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#personas">Personas</a>
+      <a href="#coach">The coach</a>
+      <a href="#try">Try it</a>
+      <a href="#results">Results</a>
+      <a href="#honesty">Honesty</a>
+      <a class="nav-cta" href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub" target="_blank" rel="noopener">★ GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header id="top" class="hero wrap">
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow">● Zero One Hack_01 · Insurance / UNIQA track</span>
+      <h1>The AI coach that catches a visitor <span class="grad-text">before they abandon</span>.</h1>
+      <p class="lead">
+        UNIQA's online health-insurance calculator loses people at two price cliffs —
+        <strong>66%</strong> at the initial price, <strong>78%</strong> at the final price.
+        The Conversion Coach detects the moment of doubt from behavioural signals and fires a
+        <strong>per-segment</strong> intervention to keep them converting online.
+      </p>
+      <div class="tag-row">
+        <span class="pill">🧠 Trained gradient-boosting classifier</span>
+        <span class="pill">📐 Transparent hard rules</span>
+        <span class="pill">🔍 <strong>Not</strong> an LLM wrapper</span>
+        <span class="pill">📝 Every fire logged &amp; auditable</span>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#try">▶ Try the interactive coach</a>
+        <a class="btn btn-ghost" href="#results">See the evidence</a>
+      </div>
+    </div>
+
+    <aside class="headline-card" aria-label="Headline result">
+      <div class="spark">Headline · identical held-out journeys</div>
+      <div class="big-multiplier"><span class="x">×</span><span id="multiplier">3.6</span></div>
+      <div class="conv-row">
+        <span class="from" id="convFrom">4.8%</span>
+        <span class="arrow">→</span>
+        <span class="to" id="convTo">17.3%</span>
+        <span style="color:var(--muted);font-size:.8rem">online conversion</span>
+      </div>
+      <div class="sub">
+        Trigger precision <strong style="color:var(--text)">72%</strong> ·
+        recall <strong style="color:var(--text)">86%</strong>.
+        Out-of-scope users are cleanly routed to an advisor — a correct exit, never counted as a conversion.
+      </div>
+    </aside>
+  </div>
+
+  <div class="stat-strip reveal">
+    <div class="cell"><div class="num grad-text" data-count="3.6" data-suffix="×" data-dec="1">3.6×</div><div class="lbl">online conversion uplift</div></div>
+    <div class="cell"><div class="num" data-count="12.5" data-suffix=" pts" data-dec="1">+12.5 pts</div><div class="lbl">absolute conversion gain</div></div>
+    <div class="cell"><div class="num" data-count="1062" data-suffix="">1,062</div><div class="lbl">interventions fired (held-out)</div></div>
+    <div class="cell"><div class="num" data-count="0.975" data-dec="3">0.975</div><div class="lbl">classifier ROC-AUC</div></div>
+  </div>
+</header>
+
+<!-- ============ PROBLEM ============ -->
+<section id="problem" class="wrap reveal">
+  <span class="eyebrow">01 — The problem</span>
+  <h2 class="section-title">Two price cliffs swallow <span class="grad-text">~94% of the funnel</span></h2>
+  <p class="section-lead">
+    A thousand in-scope visitors start the private-doctor calculator. By the closing step only
+    ~56 remain. The leaks aren't spread evenly — they're concentrated at the moment a price appears.
+  </p>
+
+  <div class="card cliff-card" style="margin-top:1.8rem">
+    <div class="funnel-viz" id="funnelViz">
+      <!-- bars injected by JS -->
+    </div>
+    <div>
+      <h3 style="font-size:1.3rem;margin-bottom:0.8rem">Where they leave</h3>
+      <p style="color:var(--muted);font-size:0.95rem">
+        At <strong>step 4 (initial price)</strong> 66% of the surviving cohort drops.
+        At <strong>step 7 (final price after the health questions)</strong> another 78% of who's left drops —
+        often because the final price ticks up from the estimate with no clear explanation.
+      </p>
+      <p style="color:var(--muted);font-size:0.95rem;margin-top:0.9rem">
+        Survival math: 1,000 → ~340 → ~57 ≈ the <strong>~5.6%</strong> baseline UNIQA reports.
+        The coach's whole job is to widen those two bottlenecks <em>without</em> annoying the people who'd have
+        stayed anyway.
+      </p>
+      <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap">
+        <span class="pill">Step 4 · <strong style="color:var(--coral)">66% drop</strong></span>
+        <span class="pill">Step 7 · <strong style="color:var(--coral)">78% drop</strong></span>
+        <span class="pill">Baseline · <strong>5.6%</strong></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how" class="wrap reveal">
+  <span class="eyebrow">02 — How it works</span>
+  <h2 class="section-title">A two-stage system, <span class="grad-text">one source of truth</span></h2>
+  <p class="section-lead">
+    Edit a persona <code>.md</code> and the simulated people change. Edit <code>personas.js</code> and the
+    coach's config changes. Nothing else hard-codes persona facts — so the demo can never drift from the
+    engine being judged.
+  </p>
+
+  <div class="source-banner" style="margin-top:1.6rem">
+    <span class="src-chip">📋 source of truth</span>
+    <span class="txt"><code>franz.md · judith.md · peter.md</code> &nbsp;→ the characters the LLM role-plays</span>
+    <span class="txt"><code>personas.js</code> &nbsp;→ segmentation + funnel facts (50/30/20 mix · 66/78 cliffs)</span>
+  </div>
+
+  <div class="stage-grid">
+    <div class="stage gpu">
+      <span class="stage-tag">Stage 1 · GPU — Leonardo A100 · vLLM</span>
+      <h3>Act out real journeys</h3>
+      <p>A real LLM role-plays each persona through the funnel — 1 call = 1 full journey — recording
+         behavioural signals in character.</p>
+      <ul>
+        <li>Franz bails at the final-price surprise</li>
+        <li>Judith hesitates at the initial price</li>
+        <li>Peter is overwhelmed early</li>
+        <li>Outputs signal <em>ranges</em>: dwell, hesitation, back-clicks, competitor-tab</li>
+      </ul>
+    </div>
+    <div class="stage cpu">
+      <span class="stage-tag">Stage 2 · CPU — runs anywhere (~1 min)</span>
+      <h3>Calibrate, train, evaluate</h3>
+      <p>A probabilistic funnel is calibrated to UNIQA's real numbers, emits labelled per-step rows, and
+         trains a small classifier — <strong>the coach's brain</strong>.</p>
+      <ul>
+        <li><code>funnel.py</code> reproduces 66% / 78% / 5.6%</li>
+        <li>~110k labelled rows → <code>HistGradientBoosting</code></li>
+        <li>Common random numbers → perfectly paired before/after</li>
+        <li><code>evaluate.py</code> → the three judged dimensions</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    subgraph SRC["📋 Source of truth"]
+        MD["franz.md · judith.md · peter.md"]
+        JS["personas.js<br/>50/30/20 · 66/78 cliffs"]
+    end
+    subgraph GPU["🖥️ Stage 1 — GPU (A100 · vLLM)"]
+        SIM["persona_simulator.py"]
+        CSV["data_&lt;persona&gt;.csv"]
+        SIM --> CSV
+    end
+    subgraph CPU["💻 Stage 2 — CPU"]
+        FUNNEL["funnel.py<br/>(66% / 78% / 5.6%)"]
+        BASE["baseline_steps.csv"]
+        TRAIN["train_coach.py"]
+        BRAIN["coach_model.pkl<br/>the brain"]
+        EVAL["evaluate.py"]
+        FUNNEL --> BASE --> TRAIN --> BRAIN --> EVAL
+        FUNNEL --> EVAL
+    end
+    subgraph RT["🎯 Coach at runtime"]
+        DETECT["DETECT — when?<br/>risk + rules + dropoff vigilance"]
+        DECIDE["DECIDE — how?<br/>infer segment → best intervention"]
+        DETECT --> DECIDE
+    end
+    MD --> SIM
+    CSV -.calibrates ranges.-> FUNNEL
+    JS -.config.-> FUNNEL
+    JS -.config.-> DETECT
+    JS -.config.-> DECIDE
+    BRAIN --> DETECT
+    </pre>
+  </div>
+</section>
+
+<!-- ============ PERSONAS ============ -->
+<section id="personas" class="wrap reveal">
+  <span class="eyebrow">03 — Three segments</span>
+  <h2 class="section-title">One nudge can't serve <span class="grad-text">three different people</span></h2>
+  <p class="section-lead">
+    The three personas drop at different steps and respond to different interventions. Push an advisor on
+    Franz and he closes the tab; pile more information on Peter and he freezes. Per-segment targeting beats a
+    single unified nudge <em>by construction</em>.
+  </p>
+
+  <div class="persona-tabs" id="personaTabs" style="margin-top:1.6rem">
+    <div class="persona-tab active" data-p="franz">
+      <span class="pt-name" style="color:var(--franz)">Franz Huber</span>
+      <span class="pt-seg">Online Affine · S2</span>
+      <span class="pill pt-mix">50% of traffic</span>
+    </div>
+    <div class="persona-tab" data-p="judith">
+      <span class="pt-name" style="color:var(--judith)">Judith Berger</span>
+      <span class="pt-seg">Rising Hybrid · S1</span>
+      <span class="pill pt-mix">30% of traffic</span>
+    </div>
+    <div class="persona-tab" data-p="peter">
+      <span class="pt-name" style="color:var(--peter)">Peter Wagner</span>
+      <span class="pt-seg">Service Affine · S3</span>
+      <span class="pill pt-mix">20% of traffic</span>
+    </div>
+  </div>
+
+  <!-- Franz -->
+  <div class="persona-panel active card" data-p="franz" style="--accent:var(--franz)">
+    <div class="persona-body">
+      <div>
+        <p class="persona-quote">"I want to buy insurance the way I buy everything else: online, fast, transparent. If a tariff says 'advisory required', I close the tab."</p>
+        <p class="persona-meta">
+          40, Vienna, digital-first service-sector. Price-sensitive but ready to commit if the deal is clear.
+          <strong>Will leave silently</strong> — the signal is in the click pattern, not the words.
+        </p>
+      </div>
+      <div class="do-dont">
+        <div class="dd-row drop"><div class="dd-label">▼ Drops at</div><p>Final price (step 7)</p><small>The €68 estimate becomes €74 with no warning — feels deceived, bails.</small></div>
+        <div class="dd-row avoid"><div class="dd-label">✕ Coach must NOT</div><p>Push an advisor</p><small>response_model: advisor push = ×1.25 leave hazard — a backfire.</small></div>
+        <div class="dd-row fire"><div class="dd-label">✓ What works</div><p>Show the data — market comparison &amp; price justification</p><small>"Optimal is below ~80% of comparable private-doctor tariffs."</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Judith -->
+  <div class="persona-panel card" data-p="judith" style="--accent:var(--judith)">
+    <div class="persona-body">
+      <div>
+        <p class="persona-quote">"I research things myself online — but for important decisions I want someone I can trust to confirm I'm making the right choice."</p>
+        <p class="persona-meta">
+          43, Vienna, mid-management, family. Time-pressured. <strong>Disengages silently</strong> when a term
+          is unclear or a price jumps without explanation — she's not lost, she's interrupted.
+        </p>
+      </div>
+      <div class="do-dont">
+        <div class="dd-row drop"><div class="dd-label">▼ Drops at</div><p>Initial price (step 4)</p><small>Slows down, hovers on unfamiliar terms, wonders why two tariffs are advisor-only.</small></div>
+        <div class="dd-row avoid"><div class="dd-label">✕ Coach must NOT</div><p>Reflexively suggest an advisor</p><small>A desperate handoff reads as pressure; phrasing matters.</small></div>
+        <div class="dd-row fire"><div class="dd-label">✓ What works</div><p>Term glossary &amp; price reassurance keeps her online</p><small>"Quick glossary: refractive eye surgery = laser vision correction…"</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Peter -->
+  <div class="persona-panel card" data-p="peter" style="--accent:var(--peter)">
+    <div class="persona-body">
+      <div>
+        <p class="persona-quote">"Just tell me what's right for me. I don't want a menu of three — I want a recommendation, or a person who'll handle it."</p>
+        <p class="persona-meta">
+          35, mixed urban/rural, service job. Easily overwhelmed by tables &amp; jargon. For Peter a
+          <strong>warm handoff to a person is the win</strong> — a booked callback counts, and is reported separately.
+        </p>
+      </div>
+      <div class="do-dont">
+        <div class="dd-row drop"><div class="dd-label">▼ Drops at</div><p>Early (steps 1–3)</p><small>Too many numbers, no "recommended for you" — overwhelmed before the price cliff.</small></div>
+        <div class="dd-row avoid"><div class="dd-label">✕ Coach must NOT</div><p>Add more information</p><small>market_comparison = ×1.15 hazard — more choice = more paralysis.</small></div>
+        <div class="dd-row fire"><div class="dd-label">✓ What works</div><p>Simplify, or offer a proactive callback</p><small>"Most people with your needs pick Optimal — one click to continue."</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE COACH ============ -->
+<section id="coach" class="wrap reveal">
+  <span class="eyebrow">04 — The coach</span>
+  <h2 class="section-title">Detect <span class="grad-text">when</span>, decide <span class="grad-text">how</span></h2>
+  <p class="section-lead">
+    The trained classifier outputs P(abandon at this step). The coach blends that with transparent hard rules,
+    infers a coarse segment from behaviour (no privileged knowledge of the true persona), and fires the
+    intervention documented as effective for that segment.
+  </p>
+
+  <div class="coach-flow" style="margin-top:1.6rem">
+    <div class="flow-box">
+      <h3>DETECT — when? <span class="badge">coach/coach.py</span></h3>
+      <ul>
+        <li><b>Classifier risk.</b> <code>P(abandon)</code> from the gradient-boosting brain, on signals observable at the moment.</li>
+        <li><b>Hard rules.</b> Final-price jump · ≥2 back-clicks · competitor tab · long dwell.</li>
+        <li><b>Dropoff vigilance.</b> The firing threshold is <em>lowered</em> at the step where the inferred segment is documented to drop off.</li>
+      </ul>
+    </div>
+    <div class="flow-box">
+      <h3>DECIDE — how? <span class="badge">grounded in personas.js</span></h3>
+      <ul>
+        <li><b>Infer segment.</b> online / hybrid / service, from the signal pattern alone.</li>
+        <li><b>Pick best intervention.</b> from that segment's documented <code>best_coach_interventions</code>.</li>
+        <li><b>Resolve vs the true persona.</b> a mis-targeted nudge earns no uplift — or backfires — which the intervention-quality metric captures.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.05rem;margin:2rem 0 0.4rem;font-family:var(--display)">Every fire is logged with its trigger reason</h3>
+  <p style="color:var(--muted);font-size:0.9rem">Real paired trace (<code>artifacts/qualitative_trace.txt</code>) — baseline outcome vs coach outcome on the same pre-drawn journey:</p>
+  <div class="log-block">
+<span class="conv">=== Judith — baseline=ABANDONED | coach=CONVERTED ===</span>
+  step  3 personal_data        dwell= 15s hes=1 back=1 tab=0
+  step  4 tariff_initial_price <span class="ev">dwell= 21s hes=1 back=1</span>
+        ↳ <span class="nudge">COACH [explanation/term_glossary]</span> <span class="trig">[risk=0.55 | seg=hybrid | dropoff | best]</span>
+          "Quick glossary: 'refractive eye surgery' = laser vision correction;
+           'medical aids' = e.g. hearing aids, orthotics. Hover any term."
+  step  7 final_price          dwell= 33s hes=3 back=2 final=€40.29
+        ↳ <span class="nudge">COACH [personalization/simplify_recommendation]</span> <span class="trig">[rule:repeated_back_navigation]</span>
+          "Nothing more to decide — your cover is set. Tap continue and you're done."
+  step 12 closing              <span class="conv">→ CONVERTED ✓</span>
+  </div>
+</section>
+
+<!-- ============ INTERACTIVE DEMO ============ -->
+<section id="try" class="wrap reveal">
+  <span class="eyebrow">05 — Try it</span>
+  <h2 class="section-title">Walk a journey, <span class="grad-text">watch the coach react</span></h2>
+  <p class="section-lead">
+    Pick a persona and step through the 7-step funnel. Risk rises with hesitation; when it crosses the
+    threshold (lowered at that segment's drop-off step) the coach fires its best intervention.
+    <em>Illustrative of the live demo's feel — the judged numbers come from the real engine below.</em>
+  </p>
+
+  <div class="demo-shell" style="margin-top:1.6rem">
+    <div class="demo-top">
+      <div class="persona-pick" id="demoPick">
+        <button class="active" data-p="franz">Franz · online</button>
+        <button data-p="judith">Judith · hybrid</button>
+        <button data-p="peter">Peter · service</button>
+      </div>
+      <div style="font-size:0.82rem;color:var(--muted)" id="demoPersonaHint">Drops at: final price (step 7)</div>
+    </div>
+
+    <div class="demo-steps" id="demoSteps"><!-- injected --></div>
+
+    <div class="risk-meter">
+      <div class="rm-top"><span>abandonment risk</span><span id="riskPct">0%</span></div>
+      <div class="risk-track"><div class="risk-fill" id="riskFill"></div></div>
+    </div>
+
+    <div class="coach-bubble" id="coachBubble">
+      <div class="cb-head" id="coachTrigger">coach fired</div>
+      <p id="coachMsg"></p>
+    </div>
+
+    <div class="demo-controls">
+      <button class="btn btn-primary" id="demoNext">Next step →</button>
+      <button class="btn btn-ghost" id="demoReset">↺ Reset</button>
+      <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--muted);margin-left:auto">
+        <input type="checkbox" id="coachToggle" checked /> coach enabled
+      </label>
+    </div>
+
+    <div class="demo-outcome" id="demoOutcome"></div>
+    <div class="demo-note">⚠ This walkthrough is a transparent illustration of the interaction. The headline metrics in the Results section are produced by <code>leonardo_sim/evaluate.py</code> on held-out seed 99, not by this widget.</div>
+  </div>
+</section>
+
+<!-- ============ RESULTS ============ -->
+<section id="results" class="wrap reveal">
+  <span class="eyebrow">06 — The evidence</span>
+  <h2 class="section-title">Three judged dimensions, <span class="grad-text">all from the real engine</span></h2>
+  <p class="section-lead">
+    Held-out cohort: 300 journeys per persona, seed 99 (disjoint from training), identical journeys resolved
+    with vs without the coach (common random numbers), re-weighted to the 50/30/20 mix. Every number is read
+    live from <code>artifacts/eval_metrics.json</code> — none are hard-coded.
+  </p>
+
+  <div class="dim-grid">
+    <div class="dim-card">
+      <div class="dim-no">Dimension 1</div>
+      <h3>Conversion uplift</h3>
+      <div class="chart-box"><canvas id="chartConversion"></canvas></div>
+      <div class="dim-stats">
+        <div class="ds"><span>Overall online conversion</span><b><span style="color:var(--red)">4.8%</span> → <span style="color:var(--green)">17.3%</span></b></div>
+        <div class="ds"><span>Step 4 conditional drop</span><b>67% → 46%</b></div>
+        <div class="ds"><span>Step 7 conditional drop</span><b>80% → 55%</b></div>
+      </div>
+    </div>
+
+    <div class="dim-card">
+      <div class="dim-no">Dimension 2</div>
+      <h3>Works for all three segments</h3>
+      <div class="chart-box"><canvas id="chartPersona"></canvas></div>
+      <div class="dim-stats">
+        <div class="ds"><span>Franz (50%)</span><b>6.3% → 22.0% · ×3.5</b></div>
+        <div class="ds"><span>Judith (30%)</span><b>3.0% → 14.7% · ×4.9</b></div>
+        <div class="ds"><span>Peter (20%)</span><b>3.7% → 11.7% · ×3.2</b></div>
+      </div>
+    </div>
+
+    <div class="dim-card">
+      <div class="dim-no">Dimension 3</div>
+      <h3>Intervention quality</h3>
+      <div class="chart-box"><canvas id="chartQuality"></canvas></div>
+      <div class="dim-stats">
+        <div class="ds"><span>Precision (real would-leave)</span><b style="color:var(--green)">72%</b></div>
+        <div class="ds"><span>Recall (caught)</span><b style="color:var(--green)">87%</b></div>
+        <div class="ds"><span>Annoyance (fired anyway)</span><b style="color:var(--amber)">28%</b></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.1rem;margin:2.4rem 0 0.4rem;font-family:var(--display)">Per-step drop-off — baseline vs coach</h3>
+  <p style="color:var(--muted);font-size:0.9rem">The coach cuts the conditional drop at both price cliffs while barely touching the low-friction steps.</p>
+  <div class="card" style="margin-top:1rem"><div class="chart-box" style="height:320px"><canvas id="chartDropoff"></canvas></div></div>
+
+  <table class="results-table">
+    <thead><tr><th>Metric</th><th>Baseline</th><th>With coach</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td>Overall online conversion</td><td>4.8%</td><td>17.3%</td><td class="up">×3.6 · +12.5 pts</td></tr>
+      <tr><td>Conditional drop @ step 4 (initial price)</td><td>67.3%</td><td>46.4%</td><td class="up">−20.9 pts</td></tr>
+      <tr><td>Conditional drop @ step 7 (final price)</td><td>80.4%</td><td>55.1%</td><td class="up">−25.3 pts</td></tr>
+      <tr><td>Trigger precision / recall</td><td>—</td><td>72% / 87%</td><td class="up">fires on real moments</td></tr>
+      <tr><td>Classifier ROC-AUC / PR-AUC</td><td>—</td><td>0.975 / 0.927</td><td class="up">Brier 0.043</td></tr>
+    </tbody>
+  </table>
+
+  <details class="raw-charts">
+    <summary>Show the raw evaluation output (authentic matplotlib artifacts)</summary>
+    <div class="raw-grid">
+      <figure><img src="assets/img/eval_conversion.png" alt="Conversion by persona" loading="lazy" /><figcaption>eval_conversion.png — conversion by persona</figcaption></figure>
+      <figure><img src="assets/img/eval_dropoff.png" alt="Drop-off per step" loading="lazy" /><figcaption>eval_dropoff.png — per-step drop-off</figcaption></figure>
+      <figure><img src="assets/img/eval_intervention_quality.png" alt="Intervention quality" loading="lazy" /><figcaption>eval_intervention_quality.png — precision / recall / annoyance</figcaption></figure>
+      <figure><img src="assets/img/classifier_eval.png" alt="Classifier evaluation" loading="lazy" /><figcaption>classifier_eval.png — ROC, PR, calibration, importance</figcaption></figure>
+    </div>
+  </details>
+</section>
+
+<!-- ============ HONESTY ============ -->
+<section id="honesty" class="wrap reveal">
+  <span class="eyebrow">07 — Honesty &amp; scope</span>
+  <h2 class="section-title">What's real, what's synthetic, <span class="grad-text">disclosed up front</span></h2>
+  <p class="section-lead">
+    The full evaluation, assumptions and disclosures live in
+    <a href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub/blob/main/REPORT.md" target="_blank" rel="noopener" style="color:var(--cyan)">REPORT.md</a>.
+    The highlights:
+  </p>
+
+  <div class="honesty-grid">
+    <div class="honesty-card good"><h3><span class="ico">✅</span> Out-of-scope = correct exit</h3><p>Hospital path, "other persons", and the advisory-only tariffs (Opt.Plus / Premium) force a clean advisor route. It's counted as <code>advisor_routed</code> and reported separately — <strong>never</strong> as an online conversion. The coach routes them, it doesn't coach them.</p></div>
+    <div class="honesty-card warn"><h3><span class="ico">⚖️</span> The conversion-definition conflict</h3><p>The brief contradicts itself (contract spec: online only; persona matrix: handoffs also count). We use the <strong>stricter contract definition as the headline</strong> and track advisor routes separately — we did not silently pick the more favourable number.</p></div>
+    <div class="honesty-card good"><h3><span class="ico">🔁</span> Reproducible</h3><p>Identical seeds for baseline vs coach (common random numbers), verified not assumed. Training seed 11, evaluation seed 99 (disjoint). Re-runs end-to-end on CPU in ~1 min via <code>./run.sh</code>.</p></div>
+    <div class="honesty-card warn"><h3><span class="ico">🧪</span> Synthetic, documented</h3><p>No real clickstream — the funnel is calibrated to UNIQA's published aggregates (66/78/5.6), and response efficacies (including the documented backfires) are synthetic and stated. The LLM run was a smoke-test-sized validation of the pipeline.</p></div>
+    <div class="honesty-card good"><h3><span class="ico">🧠</span> Not an LLM wrapper</h3><p>Detection is a trained <code>HistGradientBoostingClassifier</code> blended with transparent rules. The optional Phi-3 chat is <em>not</em> required — without it replies are instant and doc-grounded, and the decision logic is independent of any LLM call.</p></div>
+    <div class="honesty-card good"><h3><span class="ico">🔒</span> Clean submission</h3><p>MIT licensed, public repo, no API keys or tokens in the repo or its git history. README + REPORT + requirements present; runs from a clean checkout.</p></div>
+  </div>
+</section>
+
+<!-- ============ RUN IT ============ -->
+<section id="run" class="wrap reveal">
+  <span class="eyebrow">08 — Run it yourself</span>
+  <h2 class="section-title">One launcher, <span class="grad-text">zero setup pain</span></h2>
+  <p class="section-lead">
+    <code>run.sh</code> builds a local pip venv (no conda solve) and runs anything. The web demo has two
+    tabs: a live click-through coach, and the real-engine evidence view.
+  </p>
+
+  <div class="grid cols-2" style="margin-top:1.6rem">
+    <div class="code-block">
+      <button class="copy-btn" data-copy="git clone https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub.git
+cd ZeroOneHack-PromptCorn-Sub
+./run.sh app">copy</button>
+<span class="cmt"># 1 · clone &amp; launch the web demo</span>
+<span class="cmd">git clone https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub.git</span>
+<span class="cmd">cd ZeroOneHack-PromptCorn-Sub</span>
+<span class="cmd">./run.sh app</span>
+<span class="out"># → http://localhost:9696  (two tabs: live coach + evidence)</span>
+    </div>
+    <div class="code-block">
+      <button class="copy-btn" data-copy="./run.sh calibrate
+./run.sh eval --no-plots
+./run.sh demo --compare judith --seed 17">copy</button>
+<span class="cmt"># 2 · reproduce the analysis (CPU, ~1 min)</span>
+<span class="cmd">./run.sh calibrate</span>      <span class="cmt"># verify 5.6% / 66% / 78%</span>
+<span class="cmd">./run.sh eval --no-plots</span>  <span class="cmt"># the three dimensions</span>
+<span class="cmd">./run.sh demo --compare judith --seed 17</span>
+<span class="out"># → terminal side-by-side: routed → CONVERTED</span>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.1rem;margin:2.2rem 0 0;font-family:var(--display)">Technical reference</h3>
+  <table class="ref-table">
+    <thead><tr><th>Concern</th><th>Where</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Product / funnel facts</td><td><code>coach/config.py</code> · <code>personas.js</code></td><td class="note">tariffs, 50/30/20 mix, 66/78 cliffs, 5.6% baseline</td></tr>
+      <tr><td>Per-step hazards (calibrated)</td><td><code>config.py</code> <code>BASE_HAZARD</code></td><td class="note">shaped per archetype; verified by <code>--calibrate</code></td></tr>
+      <tr><td>Behavioural signals</td><td><code>coach/signals.py</code></td><td class="note">dwell / hesitation / back-clicks / competitor-tab from latent friction</td></tr>
+      <tr><td>Features (train == serve)</td><td><code>coach/features.py</code></td><td class="note">single builder, no journey-outcome leakage</td></tr>
+      <tr><td>Detection thresholds</td><td><code>coach.py</code> <code>RISK_THRESHOLD</code> · <code>DROPOFF_VIGILANCE</code></td><td class="note">per-step; lowered at the segment's drop-off step</td></tr>
+      <tr><td>Response model (synthetic)</td><td><code>coach/response_model.py</code></td><td class="note">per-persona efficacy incl. backfires (Franz↔advisor, Peter↔more-info)</td></tr>
+      <tr><td>Scope routing</td><td><code>coach/funnel.py</code></td><td class="note">hospital / "other persons" / Opt.Plus / Premium → advisor route = clean exit</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:0.8rem"><span class="logo">🎯</span><span>UNIQA Conversion Coach<br /><small>PromptCorn · Zero One Hack_01</small></span></div>
+        <p style="color:var(--muted);font-size:0.9rem;max-width:42ch">An auditable AI coach that turns the moment of doubt into a conversion — or a clean handoff — instead of a silent exit.</p>
+        <div class="team-chips">
+          <span>Valentino Garcia Susini</span>
+          <span>Erik Seferi</span>
+          <span>Dinmukhamed Zhakhan</span>
+          <span>Benjamin Szilas</span>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <a href="#problem">The problem</a>
+        <a href="#how">How it works</a>
+        <a href="#personas">The personas</a>
+        <a href="#try">Try the coach</a>
+        <a href="#results">Results</a>
+      </div>
+      <div>
+        <h4>Repository</h4>
+        <a href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub" target="_blank" rel="noopener">★ GitHub repo</a>
+        <a href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub/blob/main/README.md" target="_blank" rel="noopener">README — architecture</a>
+        <a href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub/blob/main/REPORT.md" target="_blank" rel="noopener">REPORT — evaluation &amp; disclosures</a>
+        <a href="https://github.com/ValGSgit/ZeroOneHack-PromptCorn-Sub/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 PromptCorn · MIT licensed · built for Zero One Hack_01</span>
+      <span>Numbers from <code>artifacts/eval_metrics.json</code> · ROC-AUC 0.975</span>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
